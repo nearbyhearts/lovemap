@@ -70,7 +70,11 @@ export default function ChatScreen({ route, navigation }) {
         event: 'INSERT', schema: 'public', table: 'messages',
         filter: `connection_id=eq.${connectionId}`,
       }, (payload) => {
-        setMessages(prev => [...prev, payload.new])
+        setMessages(prev => {
+          // Keine Duplikate
+          if (prev.find(m => m.id === payload.new.id)) return prev
+          return [...prev, payload.new]
+        })
       })
       .subscribe()
   }
