@@ -72,20 +72,25 @@ export default function ProfileScreen() {
   }
 
   async function pickImage() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') {
-      Alert.alert('Berechtigung benötigt', 'Bitte erlaube den Zugriff auf deine Fotos.')
-      return
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    })
-    if (!result.canceled && result.assets[0]) {
-      await uploadAvatar(result.assets[0].uri)
-    }
+    Alert.alert('Profilfoto', 'Woher möchtest du das Foto nehmen?', [
+      {
+        text: '📷 Kamera', onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync()
+          if (status !== 'granted') { Alert.alert('Berechtigung benötigt', 'Bitte erlaube den Kamerazugriff.'); return }
+          const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 })
+          if (!result.canceled && result.assets[0]) await uploadAvatar(result.assets[0].uri)
+        }
+      },
+      {
+        text: '🖼️ Galerie', onPress: async () => {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+          if (status !== 'granted') { Alert.alert('Berechtigung benötigt', 'Bitte erlaube den Zugriff auf deine Fotos.'); return }
+          const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.7 })
+          if (!result.canceled && result.assets[0]) await uploadAvatar(result.assets[0].uri)
+        }
+      },
+      { text: 'Abbrechen', style: 'cancel' }
+    ])
   }
 
   async function uploadAvatar(uri) {
