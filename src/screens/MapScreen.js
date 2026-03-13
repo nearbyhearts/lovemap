@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import {
   View, Text, StyleSheet, Alert, ActivityIndicator,
-  TouchableOpacity, Image, Modal, ScrollView,
+  TouchableOpacity, Image, Modal,
 } from 'react-native'
 import MapView, { Marker, Circle } from 'react-native-maps'
 import * as Location from 'expo-location'
 import { supabase } from '../lib/supabase'
+import { colors } from '../theme'
 
 const UPDATE_INTERVAL_MS = 30000
 const NEARBY_RADIUS_M = 1000
@@ -20,48 +21,45 @@ function getDistanceMeters(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-function formatDistance(meters) {
-  if (meters < 1000) return `${Math.round(meters)}m`
-  return `${(meters / 1000).toFixed(1)}km`
+function formatDistance(m) {
+  return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`
 }
 
 function ProfileCard({ user, distance, onClose }) {
   const p = user.profiles
   return (
-    <Modal visible={!!user} transparent animationType="slide">
+    <Modal visible transparent animationType="slide">
       <View style={card.overlay}>
         <View style={card.container}>
           <TouchableOpacity style={card.closeBtn} onPress={onClose}>
             <Text style={card.closeText}>✕</Text>
           </TouchableOpacity>
-
           <View style={card.avatarRow}>
             {p?.avatar_url ? (
               <Image source={{ uri: p.avatar_url }} style={card.avatar} />
             ) : (
-              <View style={card.avatarPlaceholder}>
-                <Text style={{ fontSize: 32 }}>👤</Text>
-              </View>
+              <View style={card.avatarPlaceholder}><Text style={{ fontSize: 30 }}>👤</Text></View>
             )}
-            <View style={card.headerInfo}>
+            <View style={{ flex: 1 }}>
               <Text style={card.name}>{p?.username || 'Unbekannt'}</Text>
-              <View style={[card.statusBadge, p?.is_open ? card.statusOpen : card.statusClosed]}>
-                <Text style={card.statusText}>
-                  {p?.is_open ? '🟢 Offen' : '⚫ Nicht verfügbar'}
+              <View style={[card.badge, p?.is_open ? card.badgeOpen : card.badgeClosed]}>
+                <Text style={[card.badgeText, { color: p?.is_open ? colors.primaryDark : colors.textMuted }]}>
+                  {p?.is_open ? '🟢 Offen für Gespräch' : '⚫ Nicht verfügbar'}
                 </Text>
               </View>
               <Text style={card.distance}>📍 {formatDistance(distance)} entfernt</Text>
             </View>
           </View>
-
           {p?.bio ? <Text style={card.bio}>{p.bio}</Text> : null}
-
           <View style={card.tags}>
             {p?.gender ? <View style={card.tag}><Text style={card.tagText}>{p.gender}</Text></View> : null}
             {p?.height ? <View style={card.tag}><Text style={card.tagText}>{p.height} cm</Text></View> : null}
-            {p?.looking_for ? <View style={card.tagGreen}><Text style={card.tagTextGreen}>Sucht: {p.looking_for}</Text></View> : null}
+            {p?.looking_for ? (
+              <View style={[card.tag, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+                <Text style={[card.tagText, { color: colors.primaryDark }]}>Sucht: {p.looking_for}</Text>
+              </View>
+            ) : null}
           </View>
-
           {p?.is_open && (
             <View style={card.scanHint}>
               <Text style={card.scanHintText}>📱 Scanne den QR-Code dieser Person um zu chatten</Text>
@@ -70,6 +68,35 @@ function ProfileCard({ user, distance, onClose }) {
         </View>
       </View>
     </Modal>
+  )
+}
+
+function MyMarker({ profile }) {
+  return (
+    <View style={[styles.myMarker, profile?.is_open && styles.myMarkerOpen]}>
+      {profile?.avatar_url ? (
+        <Image source={{ uri: profile.avatar_url }} style={styles.markerAvatar} />
+      ) : (
+        <View style={styles.myMarkerInner}>
+          <Text style={styles.myMarkerEmoji}>😊</Text>
+        </View>
+      )}
+      <View style={[styles.statusDot, profile?.is_open ? styles.dotOpen : styles.dotClosed]} />
+    </View>
+  )
+}
+
+function UserMarker({ user }) {
+  const p = user.profiles
+  return (
+    <View style={[styles.userMarker, p?.is_open ? styles.userOpen : styles.userClosed]}>
+      {p?.avatar_url ? (
+        <Image source={{ uri: p.avatar_url }} style={styles.markerAvatar} />
+      ) : (
+        <Text style={styles.markerEmoji}>👤</Text>
+      )}
+      <View style={[styles.statusDot, p?.is_open ? styles.dotOpen : styles.dotClosed]} />
+    </View>
   )
 }
 
@@ -92,20 +119,16 @@ export default function MapScreen() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     myUserId.current = user.id
-
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     setMyProfile(profile)
-
     const { status } = await Location.requestForegroundPermissionsAsync()
     if (status !== 'granted') {
       Alert.alert('Standort benötigt', 'Bitte erlaube den Standortzugriff.')
       setLoading(false)
       return
     }
-
     await updateLocation(user.id)
     setLoading(false)
-
     locationInterval.current = setInterval(() => updateLocation(user.id), UPDATE_INTERVAL_MS)
     subscribeToNearbyUsers(user.id)
   }
@@ -124,51 +147,44 @@ export default function MapScreen() {
   }
 
   async function loadNearbyUsers(myId, myLat, myLng) {
-    const { data: locations } = await supabase
+    const { data } = await supabase
       .from('locations')
       .select('user_id, lat, lng, profiles(id, username, is_open, avatar_url, bio, gender, height, looking_for)')
       .neq('user_id', myId)
-
-    if (!locations) return
-    const nearby = locations
-      .map(loc => ({ ...loc, distance: getDistanceMeters(myLat, myLng, loc.lat, loc.lng) }))
-      .filter(loc => loc.distance <= NEARBY_RADIUS_M)
-      .sort((a, b) => a.distance - b.distance)
-    setNearbyUsers(nearby)
+    if (!data) return
+    setNearbyUsers(
+      data.map(loc => ({ ...loc, distance: getDistanceMeters(myLat, myLng, loc.lat, loc.lng) }))
+        .filter(loc => loc.distance <= NEARBY_RADIUS_M)
+        .sort((a, b) => a.distance - b.distance)
+    )
   }
 
   function subscribeToNearbyUsers(myId) {
     supabase.channel('locations_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' }, () => {
         if (myLocation) loadNearbyUsers(myId, myLocation.latitude, myLocation.longitude)
-      })
-      .subscribe()
+      }).subscribe()
   }
 
   function centerOnMe() {
-    if (myLocation && mapRef.current) {
+    if (myLocation && mapRef.current)
       mapRef.current.animateToRegion({ ...myLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 })
-    }
   }
+
+  if (loading) return (
+    <View style={styles.loading}>
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={styles.loadingText}>Standort wird ermittelt...</Text>
+    </View>
+  )
+
+  if (!myLocation) return (
+    <View style={styles.loading}>
+      <Text style={styles.loadingText}>Kein Standortzugriff</Text>
+    </View>
+  )
 
   const openCount = nearbyUsers.filter(u => u.profiles?.is_open).length
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={styles.loadingText}>Standort wird ermittelt...</Text>
-      </View>
-    )
-  }
-
-  if (!myLocation) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Kein Standortzugriff</Text>
-      </View>
-    )
-  }
 
   return (
     <View style={styles.container}>
@@ -176,157 +192,144 @@ export default function MapScreen() {
         ref={mapRef}
         style={styles.map}
         initialRegion={{ ...myLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
-        customMapStyle={darkMapStyle}
+        customMapStyle={pastelMapStyle}
       >
-        {/* My marker */}
         <Marker coordinate={myLocation} anchor={{ x: 0.5, y: 0.5 }}>
-          <View style={[styles.myMarker, myProfile?.is_open && styles.myMarkerOpen]}>
-            {myProfile?.avatar_url ? (
-              <Image source={{ uri: myProfile.avatar_url }} style={styles.markerAvatar} />
-            ) : (
-              <Text style={styles.markerEmoji}>😊</Text>
-            )}
-          </View>
+          <MyMarker profile={myProfile} />
         </Marker>
 
-        {/* Radius */}
         <Circle
           center={myLocation}
           radius={NEARBY_RADIUS_M}
-          strokeColor="rgba(76,175,80,0.2)"
-          fillColor="rgba(76,175,80,0.04)"
-          strokeWidth={1}
+          strokeColor="rgba(107,191,142,0.4)"
+          fillColor="rgba(107,191,142,0.07)"
+          strokeWidth={1.5}
         />
 
-        {/* Nearby users */}
         {nearbyUsers.map((loc) => (
-          <Marker
-            key={loc.user_id}
-            coordinate={{ latitude: loc.lat, longitude: loc.lng }}
-            anchor={{ x: 0.5, y: 0.5 }}
-            onPress={() => setSelectedUser(loc)}
-          >
-            <View style={[styles.userMarker, loc.profiles?.is_open ? styles.userOpen : styles.userClosed]}>
-              {loc.profiles?.avatar_url ? (
-                <Image source={{ uri: loc.profiles.avatar_url }} style={styles.markerAvatar} />
-              ) : (
-                <Text style={styles.markerEmoji}>👤</Text>
-              )}
-            </View>
+          <Marker key={loc.user_id} coordinate={{ latitude: loc.lat, longitude: loc.lng }}
+            anchor={{ x: 0.5, y: 0.5 }} onPress={() => setSelectedUser(loc)}>
+            <UserMarker user={loc} />
           </Marker>
         ))}
       </MapView>
 
-      {/* Top status bar */}
+      {/* Top bar */}
       <View style={styles.topBar}>
-        <View style={[styles.statusDot, myProfile?.is_open ? styles.dotOpen : styles.dotClosed]} />
-        <Text style={styles.statusText}>
-          {myProfile?.is_open ? 'Sichtbar' : 'Unsichtbar'}
-        </Text>
-        <View style={styles.divider} />
-        <Text style={styles.statusText}>👥 {openCount} in der Nähe</Text>
+        <View style={[styles.dot, myProfile?.is_open ? styles.dotOpen : styles.dotClosed]} />
+        <Text style={styles.topText}>{myProfile?.is_open ? 'Sichtbar' : 'Unsichtbar'}</Text>
+        <View style={styles.sep} />
+        <Text style={styles.topText}>👥 {openCount} in der Nähe</Text>
       </View>
 
       {/* Center button */}
       <TouchableOpacity style={styles.centerBtn} onPress={centerOnMe}>
-        <Text style={styles.centerBtnText}>📍</Text>
+        <Text style={{ fontSize: 22 }}>📍</Text>
       </TouchableOpacity>
 
-      {/* Selected user card */}
       {selectedUser && (
-        <ProfileCard
-          user={selectedUser}
-          distance={selectedUser.distance}
-          onClose={() => setSelectedUser(null)}
-        />
+        <ProfileCard user={selectedUser} distance={selectedUser.distance} onClose={() => setSelectedUser(null)} />
       )}
     </View>
   )
 }
 
-const darkMapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#0f0f0f' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#555' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0a0a' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1a1a1a' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#111' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a1628' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#0f1a0f' }] },
-  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#111' }] },
+const pastelMapStyle = [
+  { elementType: 'geometry', stylers: [{ color: '#eaf4ea' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7c6b' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#f0f4f0' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#f5f5f0' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c8e6f5' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#89c4e1' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#c8e6c9' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#e8f5e9' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#fde68a' }] },
+  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#eaf4ea' }] },
 ]
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  container: { flex: 1 },
   map: { flex: 1 },
-  loadingContainer: { flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: '#555', marginTop: 12, fontSize: 16 },
+  loading: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { color: colors.textMuted, marginTop: 12, fontSize: 16 },
   myMarker: {
-    width: 46, height: 46, borderRadius: 23,
-    backgroundColor: '#1a1a1a', borderWidth: 3, borderColor: '#555',
-    justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
+    width: 52, height: 52, borderRadius: 26,
+    borderWidth: 3, borderColor: colors.textMuted,
+    backgroundColor: colors.bgCard,
+    justifyContent: 'center', alignItems: 'center', overflow: 'visible',
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 5,
   },
-  myMarkerOpen: { borderColor: '#4CAF50', backgroundColor: '#0d2b0d' },
+  myMarkerOpen: { borderColor: colors.primary },
+  myMarkerInner: { width: '100%', height: '100%', borderRadius: 26, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  myMarkerEmoji: { fontSize: 24 },
   userMarker: {
-    width: 42, height: 42, borderRadius: 21,
-    borderWidth: 2, justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
+    width: 44, height: 44, borderRadius: 22,
+    borderWidth: 2.5, justifyContent: 'center', alignItems: 'center', overflow: 'visible',
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
   },
-  userOpen: { borderColor: '#4CAF50', backgroundColor: '#0d2b0d' },
-  userClosed: { borderColor: '#333', backgroundColor: '#1a1a1a' },
-  markerAvatar: { width: '100%', height: '100%' },
+  userOpen: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  userClosed: { borderColor: colors.textMuted, backgroundColor: '#f0f0f0' },
+  markerAvatar: { width: '100%', height: '100%', borderRadius: 22 },
   markerEmoji: { fontSize: 20 },
+  statusDot: {
+    position: 'absolute', bottom: 1, right: 1,
+    width: 12, height: 12, borderRadius: 6,
+    borderWidth: 2, borderColor: colors.white,
+  },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  dotOpen: { backgroundColor: colors.primary },
+  dotClosed: { backgroundColor: colors.textMuted },
   topBar: {
     position: 'absolute', top: 52, alignSelf: 'center',
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(10,10,10,0.9)', paddingHorizontal: 18,
-    paddingVertical: 10, borderRadius: 24, gap: 10,
-    borderWidth: 1, borderColor: '#222',
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.92)', paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 24, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
   },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  dotOpen: { backgroundColor: '#4CAF50' },
-  dotClosed: { backgroundColor: '#555' },
-  statusText: { color: '#ccc', fontSize: 13, fontWeight: '500' },
-  divider: { width: 1, height: 14, backgroundColor: '#333' },
+  topText: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  sep: { width: 1, height: 14, backgroundColor: colors.border },
   centerBtn: {
     position: 'absolute', bottom: 110, right: 20,
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: 'rgba(10,10,10,0.9)',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: '#222',
+    backgroundColor: colors.white, justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  centerBtnText: { fontSize: 22 },
 })
 
 const card = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   container: {
-    backgroundColor: '#161616', borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    padding: 24, paddingBottom: 48, borderTopWidth: 1, borderColor: '#222',
+    backgroundColor: colors.bgCard, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, paddingBottom: 48, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 10,
   },
   closeBtn: {
     position: 'absolute', top: 16, right: 20,
     width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#222', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center',
   },
-  closeText: { color: '#aaa', fontSize: 14, fontWeight: '700' },
-  avatarRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  avatar: { width: 72, height: 72, borderRadius: 36, marginRight: 16 },
+  closeText: { color: colors.textSecondary, fontSize: 14, fontWeight: '700' },
+  avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 14 },
+  avatar: { width: 72, height: 72, borderRadius: 36 },
   avatarPlaceholder: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: '#1e1e1e',
-    justifyContent: 'center', alignItems: 'center', marginRight: 16,
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center',
   },
-  headerInfo: { flex: 1 },
-  name: { color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 6 },
-  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 6 },
-  statusOpen: { backgroundColor: '#0d2b0d' },
-  statusClosed: { backgroundColor: '#1a1a1a' },
-  statusText: { color: '#ccc', fontSize: 13 },
-  distance: { color: '#666', fontSize: 13 },
-  bio: { color: '#aaa', fontSize: 15, lineHeight: 22, marginBottom: 16 },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  tag: { backgroundColor: '#1e1e1e', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#2a2a2a' },
-  tagText: { color: '#aaa', fontSize: 13 },
-  tagGreen: { backgroundColor: '#0d2b0d', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#2a7a2a' },
-  tagTextGreen: { color: '#4CAF50', fontSize: 13 },
-  scanHint: { backgroundColor: '#0d2b0d', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#2a7a2a' },
-  scanHintText: { color: '#4CAF50', fontSize: 14, textAlign: 'center' },
+  name: { color: colors.text, fontSize: 22, fontWeight: '700', marginBottom: 6 },
+  badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 6 },
+  badgeOpen: { backgroundColor: colors.primaryLight },
+  badgeClosed: { backgroundColor: colors.bg },
+  badgeText: { fontSize: 13, fontWeight: '500' },
+  distance: { color: colors.textMuted, fontSize: 13 },
+  bio: { color: colors.textSecondary, fontSize: 15, lineHeight: 22, marginBottom: 14 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  tag: {
+    backgroundColor: colors.bg, paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 20, borderWidth: 1, borderColor: colors.border,
+  },
+  tagText: { color: colors.textSecondary, fontSize: 13 },
+  scanHint: {
+    backgroundColor: colors.primaryLight, borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: colors.primary,
+  },
+  scanHintText: { color: colors.primaryDark, fontSize: 14, textAlign: 'center', fontWeight: '500' },
 })
