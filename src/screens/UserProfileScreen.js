@@ -21,6 +21,16 @@ export default function UserProfileScreen({ route, navigation }) {
 
   useEffect(() => { loadProfile() }, [])
 
+  function calcAge(birthdate) {
+    if (!birthdate) return null
+    const parts = birthdate.split('.')
+    if (parts.length !== 3) return null
+    const dob = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
+    const diff = Date.now() - dob.getTime()
+    const age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25))
+    return age > 0 && age < 120 ? age : null
+  }
+
   async function loadProfile() {
     const { data } = await supabase
       .from('profiles')
@@ -82,6 +92,7 @@ export default function UserProfileScreen({ route, navigation }) {
         <Text style={styles.cardLabel}>Angaben</Text>
         <View style={styles.tags}>
           {profile.gender ? <Tag label={profile.gender} /> : null}
+          {calcAge(profile.birthdate) ? <Tag label={`${calcAge(profile.birthdate)} Jahre`} /> : null}
           {profile.height ? <Tag label={`${profile.height} cm`} /> : null}
           {profile.orientation ? <Tag label={profile.orientation} /> : null}
           {profile.looking_for ? <Tag label={`Sucht: ${profile.looking_for}`} green /> : null}

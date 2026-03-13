@@ -41,6 +41,7 @@ export default function ProfileScreen() {
   const [isOpen, setIsOpen] = useState(false)
   const [gender, setGender] = useState('')
   const [height, setHeight] = useState('')
+  const [birthdate, setBirthdate] = useState('')
   const [orientation, setOrientation] = useState('')
   const [lookingFor, setLookingFor] = useState('')
   const [relationshipStatus, setRelationshipStatus] = useState('')
@@ -69,6 +70,7 @@ export default function ProfileScreen() {
       setIsOpen(data.is_open || false)
       setGender(data.gender || '')
       setHeight(data.height ? String(data.height) : '')
+      setBirthdate(data.birthdate || '')
       setOrientation(data.orientation || '')
       setLookingFor(data.looking_for || '')
       setRelationshipStatus(data.relationship_status || '')
@@ -138,6 +140,7 @@ export default function ProfileScreen() {
     const { error } = await supabase.from('profiles').update({
       username: username.trim(), bio: bio.trim(),
       gender, height: height ? parseInt(height) : null,
+      birthdate: birthdate || null,
       orientation, looking_for: lookingFor,
       relationship_status: relationshipStatus,
       show_relationship_status: showRelationshipStatus,
@@ -205,6 +208,11 @@ export default function ProfileScreen() {
         <TextInput style={[styles.input, { height: 90, textAlignVertical: 'top' }]}
           value={bio} onChangeText={setBio} placeholder="Kurz über dich..."
           placeholderTextColor={colors.textMuted} multiline />
+        <Text style={styles.label}>Geburtsdatum</Text>
+        <TextInput style={styles.input} value={birthdate} onChangeText={setBirthdate}
+          placeholder="TT.MM.JJJJ" placeholderTextColor={colors.textMuted}
+          keyboardType="numeric" maxLength={10} />
+
         <Text style={styles.label}>Größe (cm)</Text>
         <TextInput style={styles.input} value={height} onChangeText={setHeight}
           placeholder="z.B. 178" placeholderTextColor={colors.textMuted} keyboardType="numeric" maxLength={3} />
