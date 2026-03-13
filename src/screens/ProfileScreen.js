@@ -4,6 +4,7 @@ import {
   Switch, Alert, ActivityIndicator, ScrollView, Image, Modal,
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import * as Haptics from 'expo-haptics'
 import { supabase } from '../lib/supabase'
 import { colors } from '../theme'
 import QRCode from 'react-native-qrcode-svg'
@@ -125,11 +126,13 @@ export default function ProfileScreen() {
   }
 
   async function toggleOpen(value) {
+    Haptics.impactAsync(value ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light)
     setIsOpen(value)
     await supabase.from('profiles').update({ is_open: value }).eq('id', userId)
   }
 
   async function saveProfile() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     if (!username.trim()) { Alert.alert('Fehler', 'Benutzername darf nicht leer sein.'); return }
     setSaving(true)
     const { error } = await supabase.from('profiles').update({

@@ -35,7 +35,15 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "lovemap benötigt deinen Standort um Nutzer in deiner Nähe zu zeigen."
+          "locationWhenInUsePermission": "nearbyme benötigt deinen Standort um Nutzer in deiner Nähe zu zeigen."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#6bbf8e",
+          "sounds": []
         }
       ]
     ]

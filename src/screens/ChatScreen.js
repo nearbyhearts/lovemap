@@ -4,7 +4,9 @@ import {
   TouchableOpacity, KeyboardAvoidingView, Platform,
   Image, ActivityIndicator,
 } from 'react-native'
+import * as Haptics from 'expo-haptics'
 import { supabase } from '../lib/supabase'
+import { sendPushNotification } from '../lib/notifications'
 import { colors } from '../theme'
 
 function formatTime(ts) {
@@ -87,6 +89,7 @@ export default function ChatScreen({ route, navigation }) {
   async function sendMessage() {
     const content = text.trim()
     if (!content || !myId) return
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setText('')
 
     // Optimistisch sofort anzeigen
@@ -115,6 +118,10 @@ export default function ChatScreen({ route, navigation }) {
 
     // Temp-Nachricht durch echte ersetzen
     setMessages(prev => prev.map(m => m.id === tempMsg.id ? data : m))
+
+    // Push Notification an Empfänger
+    const myName = (await supabase.from('profiles').select('username').eq('id', myId).single()).data?.username || 'Jemand'
+    sendPushNotification(otherUserId, myName, content)
   }
 
   if (loading) return (
@@ -172,9 +179,12 @@ export default function ChatScreen({ route, navigation }) {
                   <Text style={[styles.bubbleText, isMe ? styles.bubbleTextMe : styles.bubbleTextThem]}>
                     {item.content}
                   </Text>
-                  <Text style={[styles.bubbleTime, isMe ? styles.bubbleTimeMe : styles.bubbleTimeThem]}>
-                    {formatTime(item.created_at)}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-end' }}>
+                    <Text style={[styles.bubbleTime, isMe ? styles.bubbleTimeMe : styles.bubbleTimeThem]}>
+                      {formatTime(item.created_at)}
+                    </Text>
+                    {isMe && <Text style={styles.bubbleTimeMe}>{item._pending ? '○' : '✓'}</Text>}
+                  </View>
                 </View>
               </View>
             </>
@@ -191,15 +201,20 @@ export default function ChatScreen({ route, navigation }) {
 
       {/* Input */}
       <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          value={text}
-          onChangeText={setText}
-          placeholder="Nachricht..."
-          placeholderTextColor={colors.textMuted}
-          multiline
-          maxLength={500}
-        />
+        <View style={{ flex: 1 }}>
+          <TextInput
+            style={styles.input}
+            value={text}
+            onChangeText={setText}
+            placeholder="Nachricht..."
+            placeholderTextColor={colors.textMuted}
+            multiline
+            maxLength={500}
+          />
+          {text.length > 400 && (
+            <Text style={styles.charCount}>{500 - text.length}</Text>
+          )}
+        </View>
         <TouchableOpacity
           style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
           onPress={sendMessage}
@@ -208,6 +223,7 @@ export default function ChatScreen({ route, navigation }) {
           <Text style={styles.sendIcon}>↑</Text>
         </TouchableOpacity>
       </View>
+      
     </KeyboardAvoidingView>
   )
 }
@@ -279,4 +295,8 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { backgroundColor: colors.border },
   sendIcon: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  charCount: {
+    position: 'absolute', bottom: 8, right: 12,
+    color: colors.textMuted, fontSize: 11,
+  },
 })

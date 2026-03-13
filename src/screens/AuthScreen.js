@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native'
+import * as Haptics from 'expo-haptics'
 import { supabase } from '../lib/supabase'
 import { colors } from '../theme'
 
@@ -12,8 +13,10 @@ export default function AuthScreen() {
   const [username, setUsername] = useState('')
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   async function handleAuth() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     if (!email || !password) { Alert.alert('Fehler', 'Bitte E-Mail und Passwort eingeben.'); return }
     setLoading(true)
     if (isLogin) {
@@ -57,7 +60,10 @@ export default function AuthScreen() {
           <View style={styles.inputWrapper}>
             <Text style={styles.inputIcon}>🔒</Text>
             <TextInput style={styles.input} placeholder="Passwort" placeholderTextColor={colors.textMuted}
-              value={password} onChangeText={setPassword} secureTextEntry />
+              value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+              <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
+            </TouchableOpacity>
           </View>
           <TouchableOpacity style={styles.button} onPress={handleAuth} disabled={loading}>
             {loading ? <ActivityIndicator color={colors.white} /> :
@@ -96,6 +102,8 @@ const styles = StyleSheet.create({
   },
   inputIcon: { fontSize: 18, marginRight: 10 },
   input: { flex: 1, color: colors.text, fontSize: 16, paddingVertical: 16 },
+  eyeBtn: { padding: 4 },
+  eyeIcon: { fontSize: 18 },
   button: {
     backgroundColor: colors.primary, borderRadius: 14,
     paddingVertical: 18, alignItems: 'center', marginTop: 8,
