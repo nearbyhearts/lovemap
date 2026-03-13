@@ -13,6 +13,7 @@ import ProfileScreen from './src/screens/ProfileScreen'
 import ContactsScreen from './src/screens/ContactsScreen'
 import ChatScreen from './src/screens/ChatScreen'
 import QRScannerScreen from './src/screens/QRScannerScreen'
+import UserProfileScreen from './src/screens/UserProfileScreen'
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -54,6 +55,7 @@ function MainStack() {
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="QRScanner" component={QRScannerScreen}
         options={{ presentation: 'modal' }} />
+      <Stack.Screen name="UserProfile" component={UserProfileScreen} />
     </Stack.Navigator>
   )
 }

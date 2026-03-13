@@ -47,7 +47,10 @@ export default function ChatScreen({ route, navigation }) {
       .single()
     setOtherProfile(profile)
 
-    navigation.setOptions({ title: profile?.username || 'Chat' })
+    navigation.setOptions({
+      title: profile?.username || 'Chat',
+      headerShown: false,
+    })
 
     await loadMessages()
     setLoading(false)
@@ -107,12 +110,17 @@ export default function ChatScreen({ route, navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
-        {otherProfile?.avatar_url ? (
-          <Image source={{ uri: otherProfile.avatar_url }} style={styles.headerAvatar} />
-        ) : (
-          <View style={styles.headerAvatarPlaceholder}><Text style={{ fontSize: 18 }}>👤</Text></View>
-        )}
-        <Text style={styles.headerName}>{otherProfile?.username || 'Chat'}</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { userId: otherUserId })}>
+          {otherProfile?.avatar_url ? (
+            <Image source={{ uri: otherProfile.avatar_url }} style={styles.headerAvatar} />
+          ) : (
+            <View style={styles.headerAvatarPlaceholder}><Text style={{ fontSize: 18 }}>👤</Text></View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { userId: otherUserId })} style={{ flex: 1 }}>
+          <Text style={styles.headerName}>{otherProfile?.username || 'Chat'}</Text>
+          <Text style={styles.headerSub}>Profil anzeigen</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Messages */}
@@ -195,7 +203,8 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center',
   },
-  headerName: { color: colors.text, fontSize: 18, fontWeight: '700', flex: 1 },
+  headerName: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  headerSub: { color: colors.textMuted, fontSize: 12 },
   messagesList: { padding: 16, paddingBottom: 8 },
   dateRow: { alignItems: 'center', marginVertical: 12 },
   dateText: {
