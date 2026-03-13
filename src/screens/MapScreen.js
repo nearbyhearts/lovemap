@@ -28,46 +28,48 @@ function formatDistance(m) {
 function ProfileCard({ user, distance, onClose }) {
   const p = user.profiles
   return (
-    <Modal visible transparent animationType="slide">
-      <View style={card.overlay}>
-        <View style={card.container}>
-          <TouchableOpacity style={card.closeBtn} onPress={onClose}>
-            <Text style={card.closeText}>✕</Text>
-          </TouchableOpacity>
-          <View style={card.avatarRow}>
-            {p?.avatar_url ? (
-              <Image source={{ uri: p.avatar_url }} style={card.avatar} />
-            ) : (
-              <View style={card.avatarPlaceholder}><Text style={{ fontSize: 30 }}>👤</Text></View>
-            )}
-            <View style={{ flex: 1 }}>
-              <Text style={card.name}>{p?.username || 'Unbekannt'}</Text>
-              <View style={[card.badge, p?.is_open ? card.badgeOpen : card.badgeClosed]}>
-                <Text style={[card.badgeText, { color: p?.is_open ? colors.primaryDark : colors.textMuted }]}>
-                  {p?.is_open ? '🟢 Offen für Gespräch' : '⚫ Nicht verfügbar'}
-                </Text>
-              </View>
-              <Text style={card.distance}>📍 {formatDistance(distance)} entfernt</Text>
-            </View>
-          </View>
-          {p?.bio ? <Text style={card.bio}>{p.bio}</Text> : null}
-          <View style={card.tags}>
-            {p?.gender ? <View style={card.tag}><Text style={card.tagText}>{p.gender}</Text></View> : null}
-            {p?.height ? <View style={card.tag}><Text style={card.tagText}>{p.height} cm</Text></View> : null}
-            {p?.looking_for ? (
-              <View style={[card.tag, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
-                <Text style={[card.tagText, { color: colors.primaryDark }]}>Sucht: {p.looking_for}</Text>
-              </View>
-            ) : null}
-          </View>
-          {p?.is_open && (
-            <View style={card.scanHint}>
-              <Text style={card.scanHintText}>📱 Scanne den QR-Code dieser Person um zu chatten</Text>
-            </View>
+    <View style={card.overlay}>
+      <TouchableOpacity style={card.backdrop} onPress={onClose} activeOpacity={1} />
+      <View style={card.container}>
+        <TouchableOpacity style={card.closeBtn} onPress={onClose}>
+          <Text style={card.closeText}>✕</Text>
+        </TouchableOpacity>
+        <View style={card.avatarRow}>
+          {p?.avatar_url ? (
+            <Image source={{ uri: p.avatar_url }} style={card.avatar} />
+          ) : (
+            <View style={card.avatarPlaceholder}><Text style={{ fontSize: 30 }}>👤</Text></View>
           )}
+          <View style={{ flex: 1 }}>
+            <Text style={card.name}>{p?.username || 'Unbekannt'}</Text>
+            <View style={[card.badge, p?.is_open ? card.badgeOpen : card.badgeClosed]}>
+              <Text style={[card.badgeText, { color: p?.is_open ? colors.primaryDark : colors.textMuted }]}>
+                {p?.is_open ? '🟢 Offen für Gespräch' : '⚫ Nicht verfügbar'}
+              </Text>
+            </View>
+            <Text style={card.distance}>📍 {formatDistance(distance)} entfernt</Text>
+          </View>
         </View>
+        {p?.bio ? <Text style={card.bio}>{p.bio}</Text> : null}
+        <View style={card.tags}>
+          {p?.gender ? <View style={card.tag}><Text style={card.tagText}>{p.gender}</Text></View> : null}
+          {p?.height ? <View style={card.tag}><Text style={card.tagText}>{p.height} cm</Text></View> : null}
+          {p?.relationship_status && p?.show_relationship_status ? (
+            <View style={card.tag}><Text style={card.tagText}>💑 {p.relationship_status}</Text></View>
+          ) : null}
+          {p?.looking_for ? (
+            <View style={[card.tag, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+              <Text style={[card.tagText, { color: colors.primaryDark }]}>Sucht: {p.looking_for}</Text>
+            </View>
+          ) : null}
+        </View>
+        {p?.is_open && (
+          <View style={card.scanHint}>
+            <Text style={card.scanHintText}>📱 Scanne den QR-Code dieser Person um zu chatten</Text>
+          </View>
+        )}
       </View>
-    </Modal>
+    </View>
   )
 }
 
@@ -149,7 +151,7 @@ export default function MapScreen() {
   async function loadNearbyUsers(myId, myLat, myLng) {
     const { data } = await supabase
       .from('locations')
-      .select('user_id, lat, lng, profiles(id, username, is_open, avatar_url, bio, gender, height, looking_for)')
+      .select('user_id, lat, lng, profiles(id, username, is_open, avatar_url, bio, gender, height, looking_for, relationship_status, show_relationship_status)')
       .neq('user_id', myId)
     if (!data) return
     setNearbyUsers(
@@ -297,7 +299,14 @@ const styles = StyleSheet.create({
 })
 
 const card = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  overlay: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, top: 0,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
   container: {
     backgroundColor: colors.bgCard, borderTopLeftRadius: 28, borderTopRightRadius: 28,
     padding: 24, paddingBottom: 48, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 10,
