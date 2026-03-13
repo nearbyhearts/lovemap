@@ -74,9 +74,11 @@ export default function ChatScreen({ route, navigation }) {
         filter: `connection_id=eq.${connectionId}`,
       }, (payload) => {
         setMessages(prev => {
-          // Keine Duplikate
+          // Keine Duplikate (weder echte ID noch temp)
           if (prev.find(m => m.id === payload.new.id)) return prev
-          return [...prev, payload.new]
+          const updated = [...prev, payload.new]
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50)
+          return updated
         })
       })
       .subscribe()
@@ -86,11 +88,33 @@ export default function ChatScreen({ route, navigation }) {
     const content = text.trim()
     if (!content || !myId) return
     setText('')
-    await supabase.from('messages').insert({
+
+    // Optimistisch sofort anzeigen
+    const tempMsg = {
+      id: `temp-${Date.now()}`,
       connection_id: connectionId,
       sender_id: myId,
       content,
-    })
+      created_at: new Date().toISOString(),
+      _pending: true,
+    }
+    setMessages(prev => [...prev, tempMsg])
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50)
+
+    const { data, error } = await supabase.from('messages').insert({
+      connection_id: connectionId,
+      sender_id: myId,
+      content,
+    }).select().single()
+
+    if (error) {
+      // Bei Fehler temporäre Nachricht entfernen
+      setMessages(prev => prev.filter(m => m.id !== tempMsg.id))
+      return
+    }
+
+    // Temp-Nachricht durch echte ersetzen
+    setMessages(prev => prev.map(m => m.id === tempMsg.id ? data : m))
   }
 
   if (loading) return (
@@ -129,6 +153,7 @@ export default function ChatScreen({ route, navigation }) {
         data={messages}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.messagesList}
+        onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         renderItem={({ item, index }) => {
           const isMe = item.sender_id === myId
