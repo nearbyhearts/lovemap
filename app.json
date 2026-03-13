@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "nearby",
-    "slug": "nearby",
+    "name": "lovemap",
+    "slug": "lovemap",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,10 +20,23 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "config": {
+        "googleMaps": {
+          "apiKey": "GOOGLE_MAPS_API_KEY"
+        }
       }
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "lovemap benötigt deinen Standort um Nutzer in deiner Nähe zu zeigen."
+        }
+      ]
+    ]
   }
 }
