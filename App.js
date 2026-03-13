@@ -10,6 +10,9 @@ import { colors } from './src/theme'
 import AuthScreen from './src/screens/AuthScreen'
 import MapScreen from './src/screens/MapScreen'
 import ProfileScreen from './src/screens/ProfileScreen'
+import ContactsScreen from './src/screens/ContactsScreen'
+import ChatScreen from './src/screens/ChatScreen'
+import QRScannerScreen from './src/screens/QRScannerScreen'
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -31,24 +34,27 @@ function MainTabs() {
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
-      <Tab.Screen
-        name="Karte"
-        component={MapScreen}
-        options={{
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🗺️</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="Profil"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>👤</Text>,
-        }}
-      />
+      <Tab.Screen name="Karte" component={MapScreen}
+        options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🗺️</Text> }} />
+      <Tab.Screen name="Kontakte" component={ContactsScreen}
+        options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>💬</Text> }} />
+      <Tab.Screen name="Profil" component={ProfileScreen}
+        options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>👤</Text> }} />
     </Tab.Navigator>
+  )
+}
+
+function MainStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Tabs" component={MainTabs} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="QRScanner" component={QRScannerScreen}
+        options={{ presentation: 'modal' }} />
+    </Stack.Navigator>
   )
 }
 
@@ -73,7 +79,7 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {session ? (
-          <Stack.Screen name="Main" component={MainTabs} />
+          <Stack.Screen name="Main" component={MainStack} />
         ) : (
           <Stack.Screen name="Auth" component={AuthScreen} />
         )}
@@ -83,10 +89,5 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  loading: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
 })

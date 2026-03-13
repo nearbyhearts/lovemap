@@ -11,6 +11,7 @@ import QRCode from 'react-native-qrcode-svg'
 const GENDER_OPTIONS = ['Mann', 'Frau', 'Nicht-binär', 'Andere']
 const ORIENTATION_OPTIONS = ['Heterosexuell', 'Homosexuell', 'Bisexuell', 'Pansexuell', 'Andere']
 const LOOKING_FOR_OPTIONS = ['Date', 'Freundschaft', 'Gespräch', 'Beziehung']
+const RELATIONSHIP_OPTIONS = ['Single', 'Vergeben', 'Kompliziert', 'Keine Angabe']
 
 function SelectModal({ visible, title, options, selected, onSelect, onClose }) {
   return (
@@ -41,6 +42,8 @@ export default function ProfileScreen() {
   const [height, setHeight] = useState('')
   const [orientation, setOrientation] = useState('')
   const [lookingFor, setLookingFor] = useState('')
+  const [relationshipStatus, setRelationshipStatus] = useState('')
+  const [showRelationshipStatus, setShowRelationshipStatus] = useState(true)
   const [avatarUrl, setAvatarUrl] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -50,6 +53,7 @@ export default function ProfileScreen() {
   const [genderModal, setGenderModal] = useState(false)
   const [orientationModal, setOrientationModal] = useState(false)
   const [lookingForModal, setLookingForModal] = useState(false)
+  const [relationshipModal, setRelationshipModal] = useState(false)
 
   useEffect(() => { loadProfile() }, [])
 
@@ -66,6 +70,8 @@ export default function ProfileScreen() {
       setHeight(data.height ? String(data.height) : '')
       setOrientation(data.orientation || '')
       setLookingFor(data.looking_for || '')
+      setRelationshipStatus(data.relationship_status || '')
+      setShowRelationshipStatus(data.show_relationship_status ?? true)
       setAvatarUrl(data.avatar_url || null)
     }
     setLoading(false)
@@ -130,6 +136,8 @@ export default function ProfileScreen() {
       username: username.trim(), bio: bio.trim(),
       gender, height: height ? parseInt(height) : null,
       orientation, looking_for: lookingFor,
+      relationship_status: relationshipStatus,
+      show_relationship_status: showRelationshipStatus,
       updated_at: new Date().toISOString(),
     }).eq('id', userId)
     if (error) Alert.alert('Fehler', 'Profil konnte nicht gespeichert werden.')
@@ -206,6 +214,7 @@ export default function ProfileScreen() {
           { label: 'Geschlecht', value: gender, onPress: () => setGenderModal(true) },
           { label: 'Sexuelle Orientierung', value: orientation, onPress: () => setOrientationModal(true) },
           { label: 'Ich suche', value: lookingFor, onPress: () => setLookingForModal(true) },
+          { label: 'Beziehungsstatus', value: relationshipStatus, onPress: () => setRelationshipModal(true) },
         ].map(({ label, value, onPress }) => (
           <View key={label}>
             <Text style={styles.label}>{label}</Text>
@@ -217,6 +226,21 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         ))}
+      </View>
+
+      {/* Beziehungsstatus anzeigen */}
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Beziehungsstatus anzeigen</Text>
+            <Text style={styles.cardSub}>
+              {showRelationshipStatus ? 'Wird auf deinem Profil angezeigt' : 'Wird verborgen'}
+            </Text>
+          </View>
+          <Switch value={showRelationshipStatus} onValueChange={setShowRelationshipStatus}
+            trackColor={{ false: colors.border, true: colors.primaryLight }}
+            thumbColor={showRelationshipStatus ? colors.primary : '#ccc'} />
+        </View>
       </View>
 
       <TouchableOpacity style={styles.saveBtn} onPress={saveProfile} disabled={saving}>
@@ -261,6 +285,8 @@ export default function ProfileScreen() {
         selected={orientation} onSelect={setOrientation} onClose={() => setOrientationModal(false)} />
       <SelectModal visible={lookingForModal} title="Ich suche" options={LOOKING_FOR_OPTIONS}
         selected={lookingFor} onSelect={setLookingFor} onClose={() => setLookingForModal(false)} />
+      <SelectModal visible={relationshipModal} title="Beziehungsstatus" options={RELATIONSHIP_OPTIONS}
+        selected={relationshipStatus} onSelect={setRelationshipStatus} onClose={() => setRelationshipModal(false)} />
     </ScrollView>
   )
 }
