@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Text, View, ActivityIndicator, StyleSheet } from 'react-native'
 import { supabase } from './src/lib/supabase'
 import { colors } from './src/theme'
+import { useUnreadCount } from './src/hooks/useUnreadCount'
 
 import AuthScreen from './src/screens/AuthScreen'
 import MapScreen from './src/screens/MapScreen'
@@ -19,6 +20,8 @@ const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
 
 function MainTabs() {
+  const { unreadCount, markAllRead } = useUnreadCount()
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -41,7 +44,20 @@ function MainTabs() {
       <Tab.Screen name="Karte" component={MapScreen}
         options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🗺️</Text> }} />
       <Tab.Screen name="Kontakte" component={ContactsScreen}
-        options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>💬</Text> }} />
+        options={{
+          tabBarIcon: ({ color }) => (
+            <View>
+              <Text style={{ fontSize: 22, color }}>💬</Text>
+              {unreadCount > 0 && (
+                <View style={badge.dot}>
+                  <Text style={badge.text}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </View>
+          ),
+        }}
+        listeners={{ tabPress: markAllRead }}
+      />
       <Tab.Screen name="Profil" component={ProfileScreen}
         options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>👤</Text> }} />
     </Tab.Navigator>
@@ -92,4 +108,14 @@ export default function App() {
 
 const styles = StyleSheet.create({
   loading: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' },
+})
+
+const badge = StyleSheet.create({
+  dot: {
+    position: 'absolute', top: -4, right: -8,
+    backgroundColor: '#e05555', borderRadius: 10,
+    minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: 4, borderWidth: 2, borderColor: colors.white,
+  },
+  text: { color: '#fff', fontSize: 10, fontWeight: '800' },
 })
