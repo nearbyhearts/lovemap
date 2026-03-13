@@ -1,5 +1,5 @@
 {
-  "name": "nearby",
+  "name": "lovemap",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -11,8 +11,18 @@
   "dependencies": {
     "expo": "~55.0.6",
     "expo-status-bar": "~55.0.4",
+    "expo-location": "~18.1.5",
     "react": "19.2.0",
-    "react-native": "0.83.2"
+    "react-native": "0.83.2",
+    "react-native-maps": "1.20.1",
+    "@supabase/supabase-js": "^2.49.4",
+    "react-native-url-polyfill": "^2.0.0",
+    "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-navigation/native": "^7.0.14",
+    "@react-navigation/native-stack": "^7.2.0",
+    "@react-navigation/bottom-tabs": "^7.2.0",
+    "react-native-screens": "^4.4.0",
+    "react-native-safe-area-context": "^5.2.0"
   },
   "private": true
 }

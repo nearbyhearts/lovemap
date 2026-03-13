@@ -1,20 +1,93 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import 'react-native-url-polyfill/auto'
+import React, { useState, useEffect } from 'react'
+import { NavigationContainer } from '@react-navigation/native'
+import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+import { Text, View, ActivityIndicator, StyleSheet } from 'react-native'
+import { supabase } from './src/lib/supabase'
+
+import AuthScreen from './src/screens/AuthScreen'
+import MapScreen from './src/screens/MapScreen'
+import ProfileScreen from './src/screens/ProfileScreen'
+
+const Stack = createNativeStackNavigator()
+const Tab = createBottomTabNavigator()
+
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: '#111',
+          borderTopColor: '#222',
+          paddingBottom: 6,
+          height: 60,
+        },
+        tabBarActiveTintColor: '#4CAF50',
+        tabBarInactiveTintColor: '#555',
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+      }}
+    >
+      <Tab.Screen
+        name="Karte"
+        component={MapScreen}
+        options={{
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🗺️</Text>,
+        }}
+      />
+      <Tab.Screen
+        name="Profil"
+        component={ProfileScreen}
+        options={{
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>👤</Text>,
+        }}
+      />
+    </Tab.Navigator>
+  )
+}
 
 export default function App() {
+  const [session, setSession] = useState(undefined)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => listener.subscription.unsubscribe()
+  }, [])
+
+  if (session === undefined) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+      </View>
+    )
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {session ? (
+          <Stack.Screen name="Main" component={MainTabs} />
+        ) : (
+          <Stack.Screen name="Auth" component={AuthScreen} />
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  )
 }
 
 const styles = StyleSheet.create({
-  container: {
+  loading: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
+    backgroundColor: '#0f0f0f',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-});
+})
