@@ -6,7 +6,6 @@ import {
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { supabase } from '../lib/supabase'
-import { sendPushNotification } from '../lib/notifications'
 import { colors } from '../theme'
 
 function formatTime(ts) {
@@ -119,9 +118,6 @@ export default function ChatScreen({ route, navigation }) {
     // Temp-Nachricht durch echte ersetzen
     setMessages(prev => prev.map(m => m.id === tempMsg.id ? data : m))
 
-    // Push Notification an Empfänger
-    const myName = (await supabase.from('profiles').select('username').eq('id', myId).single()).data?.username || 'Jemand'
-    sendPushNotification(otherUserId, myName, content)
   }
 
   if (loading) return (

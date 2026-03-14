@@ -7,8 +7,8 @@ import { Text, View, ActivityIndicator, StyleSheet } from 'react-native'
 import { supabase } from './src/lib/supabase'
 import { colors } from './src/theme'
 import { useUnreadCount } from './src/hooks/useUnreadCount'
-import * as Notifications from 'expo-notifications'
-import { registerForPushNotifications } from './src/lib/notifications'
+// Push Notifications - kommt im nächsten Build
+// import { registerForPushNotifications } from './src/lib/notifications'
 
 import AuthScreen from './src/screens/AuthScreen'
 import MapScreen from './src/screens/MapScreen'
@@ -88,7 +88,6 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      if (session) registerForPushNotifications()
     })
     return () => listener.subscription.unsubscribe()
   }, [])
